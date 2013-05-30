@@ -38,15 +38,29 @@ function ACF_GenerateModelProperties(Entity, model)
 	
 	if PhysObj:IsValid() then
 		mdlprops = {}
-		mdlprops.area = PhysObj:GetSurfaceArea() * 6.45 //(PhysObj:GetSurfaceArea() * 6.45) * 0.52505066107
+		//*
+		mdlprops.area = PhysObj:GetSurfaceArea() * 6.45 * 0.52505066107 //(PhysObj:GetSurfaceArea() * 6.45) * 0.52505066107
 		mdlprops.volume = PhysObj:GetVolume() * 16.387
-		
-		ACF.ModelProperties[model] = mdlprops
-		if ACF.BoxProperties[model] then
-			ACF.BoxProperties[model] = nil
+		local obb = Entity:OBBMaxs() - Entity:OBBMins()
+		local obbarea = (obb.x * obb.y + obb.x * obb.z + obb.y * obb.z) * 6.45 
+		mdlprops.surfratio = mdlprops.area / obbarea
+		//*/
+		/*
+		local Size = Entity:OBBMaxs() - Entity:OBBMins()
+		mdlprops.area = (Size.x * Size.y + Size.x * Size.z + Size.y * Size.z) * 6.45 
+		mdlprops.volume = Size.x * Size.y * Size.z * 16.387
+		mdlprops.surfratio = 1
+		//*/
+		//printByName(mdlprops)
+		if mdlprops.area > 0 and mdlprops.volume > 0 then
+			ACF.ModelProperties[model] = mdlprops
+			if ACF.BoxProperties[model] then
+				ACF.BoxProperties[model] = nil
+			end
+			
+			return mdlprops
 		end
-		
-		return mdlprops
+		//print("falling back to OBB because area=", mdlprops.area, " and volume=", mdlprops.volume)
 	end
 	
 	mdlprops = ACF.BoxProperties[model]
@@ -55,6 +69,7 @@ function ACF_GenerateModelProperties(Entity, model)
 		local Size = Entity:OBBMaxs() - Entity:OBBMins()
 		mdlprops.area = (Size.x * Size.y + Size.x * Size.z + Size.y * Size.z) * 6.45 
 		mdlprops.volume = Size.x * Size.y * Size.z * 16.387
+		mdlprops.surfratio = 1
 		ACF.BoxProperties[model] = mdlprops
 		return mdlprops
 	end
@@ -83,28 +98,34 @@ function ACF_Activate ( Entity , Recalc )
 	end
 	
 	local area, volume = mdlprops.area, mdlprops.volume
+	local mass = Entity:GetPhysicsObject():GetMass()
 	
-	entacf.Aera = area * 0.52505066107
+	entacf.Aera = area
 	entacf.Volume = volume
+	entacf.Density = (mass * 1000) / volume
 	
 	entacf.Ductility = entacf.Ductility or 0
 	local Area = area + area * math.Clamp(entacf.Ductility, -0.8, 0.8)
-	local Armour = Entity:GetPhysicsObject():GetMass()*1000 / Area / 0.78 		--So we get the equivalent thickness of that prop in mm if all it's weight was a steel plate
+	local Armour = mdlprops.surfratio * mass * 1000 / (Area * 0.78) 		--So we get the equivalent thickness of that prop in mm if all it's weight was a steel plate
 	local Health = Area/ACF.Threshold												--Setting the threshold of the prop aera gone
 	
-	local Fraction = 1 
-	
 	if Recalc and entacf.Health and entacf.MaxHealth then
-		Fraction = entacf.Health/entacf.MaxHealth
+		local Fraction = entacf.Health/entacf.MaxHealth
+		
+		entacf.Health = Health * Fraction
+		entacf.MaxHealth = Health
+		entacf.Armour = Armour * (0.5 + Fraction/2)
+		entacf.MaxArmour = Armour * ACF.ArmorMod
+		entacf.Type = nil
+		entacf.Mass = mass
+	else	
+		entacf.Health = Health
+		entacf.MaxHealth = Health
+		entacf.Armour = Armour
+		entacf.MaxArmour = Armour * ACF.ArmorMod
+		entacf.Type = nil
+		entacf.Mass = mass
 	end
-	
-	entacf.Health = Health * Fraction
-	entacf.MaxHealth = Health
-	entacf.Armour = Armour * (0.5 + Fraction/2)
-	entacf.MaxArmour = Armour * ACF.ArmorMod
-	entacf.Type = nil
-	entacf.Mass = PhysObj:GetMass()
-	--entacf.Density = (PhysObj:GetMass() * 1000) / volume
 	
 	if Entity:IsPlayer() or Entity:IsNPC() then
 		entacf.Type = "Squishy"
@@ -136,12 +157,14 @@ function ACF_Check ( Entity )
 	
 end
 
+
+local zeroHitres = { Damage = 0, Overkill = 0, Loss = 0, Kill = false }
 function ACF_Damage ( Entity , Energy , FrAera , Angle , Inflictor , Bone, Gun ) 
 	
 	local Activated = ACF_Check( Entity )
 	local CanDo = hook.Run("ACF_BulletDamage", Activated, Entity, Energy, FrAera, Angle, Inflictor, Bone, Gun )
 	if CanDo == false then
-		return { Damage = 0, Overkill = 0, Loss = 0, Kill = false }		
+		return zeroHitres
 	end
 	
 	if Entity.SpecialDamage then
