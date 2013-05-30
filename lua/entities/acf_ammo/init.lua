@@ -29,7 +29,8 @@ end
 
 function ENT:ACF_Activate( Recalc )
 	
-	local EmptyMass = math.max(self.EmptyMass, self:GetPhysicsObject():GetMass() - self:AmmoMass())
+	local mass = self:GetPhysicsObject():GetMass()
+	local EmptyMass = math.max(self.EmptyMass, mass - self:AmmoMass())
 
 	self.ACF = self.ACF or {} 
 	
@@ -40,9 +41,11 @@ function ENT:ACF_Activate( Recalc )
 	if not self.ACF.Volume then
 		self.ACF.Volume = PhysObj:GetVolume() * 16.38
 	end
+
+	local casingvolume = self.ACF.Aera * 5	// 5mm case is ok?
 	
 	local Armour = EmptyMass*1000 / self.ACF.Aera / 0.78 --So we get the equivalent thickness of that prop in mm if all it's weight was a steel plate
-	local Health = self.ACF.Volume/ACF.Threshold							--Setting the threshold of the prop aera gone 
+	local Health = 0.1 * casingvolume/ACF.Threshold							--Setting the threshold of the prop aera gone 
 	local Percent = 1 
 	
 	if Recalc and self.ACF.Health and self.ACF.MaxHealth then
@@ -55,7 +58,7 @@ function ENT:ACF_Activate( Recalc )
 	self.ACF.MaxArmour = Armour
 	self.ACF.Type = nil
 	self.ACF.Mass = self.Mass
-	self.ACF.Density = (self:GetPhysicsObject():GetMass()*1000) / self.ACF.Volume
+	self.ACF.Density = (mass*1000) / self.ACF.Volume
 	self.ACF.Type = "Prop"
 	
 end
