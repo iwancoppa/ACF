@@ -19,6 +19,52 @@ function ACF_UpdateVisualHealth(Entity)
 	table.insert(ACF_HealthUpdateList, Entity)
 end
 
+
+
+
+ACF.ModelProperties = {}
+ACF.ModelProperties[""] = {area = 6, volume = 1}	// default for unknown models; a 1cm^3 cube
+ACF.BoxProperties = {}
+/*
+	Uses an instance of a model to calculate statistics and caches within ACF.ModelProperties
+	All subsequent props can then use this info to avoid giant explosion lag.
+	Args;
+		Entity	Entity:	The sample entity.
+//*/
+function ACF_GenerateModelProperties(Entity, model)
+	local PhysObj = Entity:GetPhysicsObject()
+	model = model or Entity:GetModel()
+	local mdlprops
+	
+	if PhysObj:IsValid() then
+		mdlprops = {}
+		mdlprops.area = PhysObj:GetSurfaceArea() * 6.45 //(PhysObj:GetSurfaceArea() * 6.45) * 0.52505066107
+		mdlprops.volume = PhysObj:GetVolume() * 16.387
+		
+		ACF.ModelProperties[model] = mdlprops
+		if ACF.BoxProperties[model] then
+			ACF.BoxProperties[model] = nil
+		end
+		
+		return mdlprops
+	end
+	
+	mdlprops = ACF.BoxProperties[model]
+	if not mdlprops then
+		mdlprops = {}
+		local Size = Entity:OBBMaxs() - Entity:OBBMins()
+		mdlprops.area = (Size.x * Size.y + Size.x * Size.z + Size.y * Size.z) * 6.45 
+		mdlprops.volume = Size.x * Size.y * Size.z * 16.387
+		ACF.BoxProperties[model] = mdlprops
+		return mdlprops
+	end
+	
+	return mdlprops
+end
+
+
+
+
 function ACF_Activate ( Entity , Recalc )
 
 	--Density of steel = 7.8g cm3 so 7.8kg for a 1mx1m plate 1m thick
@@ -28,54 +74,45 @@ function ACF_Activate ( Entity , Recalc )
 	end
 	Entity.ACF = Entity.ACF or {} 
 	
-	local Count
-	local PhysObj = Entity:GetPhysicsObject()
-	if PhysObj:GetMesh() then Count = #PhysObj:GetMesh() end
-	if PhysObj:IsValid() and Count and Count>100 then
-
-		if not Entity.ACF.Aera then
-			Entity.ACF.Aera = (PhysObj:GetSurfaceArea() * 6.45) * 0.52505066107
-		end
-		--if not Entity.ACF.Volume then
-		--	Entity.ACF.Volume = (PhysObj:GetVolume() * 16.38)
-		--end
-	else
-		local Size = Entity.OBBMaxs(Entity) - Entity.OBBMins(Entity)
-		if not Entity.ACF.Aera then
-			Entity.ACF.Aera = ((Size.x * Size.y)+(Size.x * Size.z)+(Size.y * Size.z)) * 6.45 
-		end
-		--if not Entity.ACF.Volume then
-		--	Entity.ACF.Volume = Size.x * Size.y * Size.z * 16.38
-		--end
+	local model = Entity:GetModel()
+	local mdlprops = ACF.ModelProperties[model or ""]
+	
+	if not mdlprops then
+		mdlprops = ACF_GenerateModelProperties(Entity, model)
 	end
 	
+	local area, volume = mdlprops.area, mdlprops.volume
+	
+	Entity.ACF.Aera = area * 0.52505066107
+	Entity.ACF.Volume = volume
+	
 	Entity.ACF.Ductility = Entity.ACF.Ductility or 0
-	local Area = (Entity.ACF.Aera+Entity.ACF.Aera*math.Clamp(Entity.ACF.Ductility,-0.8,0.8))
+	local Area = area + area * math.Clamp(Entity.ACF.Ductility, -0.8, 0.8)
 	local Armour = Entity:GetPhysicsObject():GetMass()*1000 / Area / 0.78 		--So we get the equivalent thickness of that prop in mm if all it's weight was a steel plate
 	local Health = Area/ACF.Threshold												--Setting the threshold of the prop aera gone
 	
-	local Percent = 1 
+	local Fraction = 1 
 	
 	if Recalc and Entity.ACF.Health and Entity.ACF.MaxHealth then
-		Percent = Entity.ACF.Health/Entity.ACF.MaxHealth
+		Fraction = Entity.ACF.Health/Entity.ACF.MaxHealth
 	end
 	
-	Entity.ACF.Health = Health * Percent
+	Entity.ACF.Health = Health * Fraction
 	Entity.ACF.MaxHealth = Health
-	Entity.ACF.Armour = Armour * (0.5 + Percent/2)
+	Entity.ACF.Armour = Armour * (0.5 + Fraction/2)
 	Entity.ACF.MaxArmour = Armour * ACF.ArmorMod
 	Entity.ACF.Type = nil
 	Entity.ACF.Mass = PhysObj:GetMass()
-	--Entity.ACF.Density = (PhysObj:GetMass()*1000)/Entity.ACF.Volume
+	--Entity.ACF.Density = (PhysObj:GetMass() * 1000) / volume
 	
-	if Entity:IsPlayer() || Entity:IsNPC() then
+	if Entity:IsPlayer() or Entity:IsNPC() then
 		Entity.ACF.Type = "Squishy"
 	elseif Entity:IsVehicle() then
 		Entity.ACF.Type = "Vehicle"
 	else
 		Entity.ACF.Type = "Prop"
 	end
-	--print(Entity.ACF.Health)
+	
 end
 
 function ACF_Check ( Entity )
