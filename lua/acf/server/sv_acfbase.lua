@@ -38,20 +38,12 @@ function ACF_GenerateModelProperties(Entity, model)
 	
 	if PhysObj:IsValid() then
 		mdlprops = {}
-		//*
 		mdlprops.area = PhysObj:GetSurfaceArea() * 6.45 * 0.52505066107 //(PhysObj:GetSurfaceArea() * 6.45) * 0.52505066107
 		mdlprops.volume = PhysObj:GetVolume() * 16.387
 		local obb = Entity:OBBMaxs() - Entity:OBBMins()
 		local obbarea = (obb.x * obb.y + obb.x * obb.z + obb.y * obb.z) * 6.45 
 		mdlprops.surfratio = mdlprops.area / obbarea
-		//*/
-		/*
-		local Size = Entity:OBBMaxs() - Entity:OBBMins()
-		mdlprops.area = (Size.x * Size.y + Size.x * Size.z + Size.y * Size.z) * 6.45 
-		mdlprops.volume = Size.x * Size.y * Size.z * 16.387
-		mdlprops.surfratio = 1
-		//*/
-		//printByName(mdlprops)
+
 		if mdlprops.area > 0 and mdlprops.volume > 0 then
 			ACF.ModelProperties[model] = mdlprops
 			if ACF.BoxProperties[model] then
@@ -60,7 +52,6 @@ function ACF_GenerateModelProperties(Entity, model)
 			
 			return mdlprops
 		end
-		//print("falling back to OBB because area=", mdlprops.area, " and volume=", mdlprops.volume)
 	end
 	
 	mdlprops = ACF.BoxProperties[model]
@@ -136,6 +127,9 @@ function ACF_Activate ( Entity , Recalc )
 	end
 	
 end
+
+
+
 
 function ACF_Check ( Entity )
 	
