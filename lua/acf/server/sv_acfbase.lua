@@ -73,6 +73,7 @@ function ACF_Activate ( Entity , Recalc )
 		return
 	end
 	Entity.ACF = Entity.ACF or {} 
+	local entacf = Entity.ACF
 	
 	local model = Entity:GetModel()
 	local mdlprops = ACF.ModelProperties[model or ""]
@@ -83,34 +84,34 @@ function ACF_Activate ( Entity , Recalc )
 	
 	local area, volume = mdlprops.area, mdlprops.volume
 	
-	Entity.ACF.Aera = area * 0.52505066107
-	Entity.ACF.Volume = volume
+	entacf.Aera = area * 0.52505066107
+	entacf.Volume = volume
 	
-	Entity.ACF.Ductility = Entity.ACF.Ductility or 0
-	local Area = area + area * math.Clamp(Entity.ACF.Ductility, -0.8, 0.8)
+	entacf.Ductility = entacf.Ductility or 0
+	local Area = area + area * math.Clamp(entacf.Ductility, -0.8, 0.8)
 	local Armour = Entity:GetPhysicsObject():GetMass()*1000 / Area / 0.78 		--So we get the equivalent thickness of that prop in mm if all it's weight was a steel plate
 	local Health = Area/ACF.Threshold												--Setting the threshold of the prop aera gone
 	
 	local Fraction = 1 
 	
-	if Recalc and Entity.ACF.Health and Entity.ACF.MaxHealth then
-		Fraction = Entity.ACF.Health/Entity.ACF.MaxHealth
+	if Recalc and entacf.Health and entacf.MaxHealth then
+		Fraction = entacf.Health/entacf.MaxHealth
 	end
 	
-	Entity.ACF.Health = Health * Fraction
-	Entity.ACF.MaxHealth = Health
-	Entity.ACF.Armour = Armour * (0.5 + Fraction/2)
-	Entity.ACF.MaxArmour = Armour * ACF.ArmorMod
-	Entity.ACF.Type = nil
-	Entity.ACF.Mass = PhysObj:GetMass()
-	--Entity.ACF.Density = (PhysObj:GetMass() * 1000) / volume
+	entacf.Health = Health * Fraction
+	entacf.MaxHealth = Health
+	entacf.Armour = Armour * (0.5 + Fraction/2)
+	entacf.MaxArmour = Armour * ACF.ArmorMod
+	entacf.Type = nil
+	entacf.Mass = PhysObj:GetMass()
+	--entacf.Density = (PhysObj:GetMass() * 1000) / volume
 	
 	if Entity:IsPlayer() or Entity:IsNPC() then
-		Entity.ACF.Type = "Squishy"
+		entacf.Type = "Squishy"
 	elseif Entity:IsVehicle() then
-		Entity.ACF.Type = "Vehicle"
+		entacf.Type = "Vehicle"
 	else
-		Entity.ACF.Type = "Prop"
+		entacf.Type = "Prop"
 	end
 	
 end
