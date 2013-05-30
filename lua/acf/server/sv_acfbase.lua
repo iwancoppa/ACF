@@ -32,10 +32,10 @@ ACF.BoxProperties = {}
 		Entity	Entity:	The sample entity.
 //*/
 function ACF_GenerateModelProperties(Entity, model)
-	local PhysObj = Entity:GetPhysicsObject()
+	//local PhysObj = Entity:GetPhysicsObject()
 	model = model or Entity:GetModel()
 	local mdlprops
-	
+	/*
 	if PhysObj:IsValid() then
 		mdlprops = {}
 		mdlprops.area = PhysObj:GetSurfaceArea() * 6.45 * 0.52505066107 //(PhysObj:GetSurfaceArea() * 6.45) * 0.52505066107
@@ -56,16 +56,20 @@ function ACF_GenerateModelProperties(Entity, model)
 	
 	mdlprops = ACF.BoxProperties[model]
 	if not mdlprops then
+	//*/
 		mdlprops = {}
 		local Size = Entity:OBBMaxs() - Entity:OBBMins()
 		mdlprops.area = (Size.x * Size.y + Size.x * Size.z + Size.y * Size.z) * 6.45 
 		mdlprops.volume = Size.x * Size.y * Size.z * 16.387
 		mdlprops.surfratio = 1
-		ACF.BoxProperties[model] = mdlprops
+		//ACF.BoxProperties[model] = mdlprops
+		ACF.ModelProperties[model] = mdlprops
 		return mdlprops
+	/*
 	end
 	
 	return mdlprops
+	//*/
 end
 
 
@@ -97,7 +101,7 @@ function ACF_Activate ( Entity , Recalc )
 	
 	entacf.Ductility = entacf.Ductility or 0
 	local Area = area + area * math.Clamp(entacf.Ductility, -0.8, 0.8)
-	local Armour = mdlprops.surfratio * mass * 1000 / (Area * 0.78) 		--So we get the equivalent thickness of that prop in mm if all it's weight was a steel plate
+	local Armour = mass * 1000 / (Area * 0.78) 		--So we get the equivalent thickness of that prop in mm if all it's weight was a steel plate
 	local Health = Area/ACF.Threshold												--Setting the threshold of the prop aera gone
 	
 	if Recalc and entacf.Health and entacf.MaxHealth then
