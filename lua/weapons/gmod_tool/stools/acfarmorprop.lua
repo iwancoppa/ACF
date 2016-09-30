@@ -1,5 +1,7 @@
 
-TOOL.Category	= "Construction"
+local cat = ((ACF.CustomToolCategory and ACF.CustomToolCategory:GetBool()) and "ACF" or "Construction");
+
+TOOL.Category	= cat
 TOOL.Name		= "#tool.acfarmorprop.name"
 TOOL.Command	= nil
 TOOL.ConfigName	= ""
@@ -169,18 +171,24 @@ function TOOL:Reload( trace )
 	if not IsValid( ent ) or ent:IsPlayer() then return false end
 	if CLIENT then return true end
 	
-	local total = 0
+	local data = ACF_CalcMassRatio(ent, true)
 	
-	for k, v in pairs( constraint.GetAllConstrainedEntities( ent ) ) do
-		if not IsValid( v ) then continue end
-		
-		local phys = v:GetPhysicsObject()
-		if not IsValid( phys ) then continue end
-		
-		total = total + phys:GetMass()
+	local total = math.Round( ent.acftotal, 1 )
+	local phystotal = math.Round( ent.acfphystotal, 1 )
+	local parenttotal = math.Round( ent.acftotal - ent.acfphystotal, 1 )
+	local physratio = math.Round(100 * ent.acfphystotal / ent.acftotal, 1)
+	
+	local pwr = "\n"
+	if data.Fuel == 2 then
+		pwr = pwr .. math.Round(data.Power * 1.25 / (ent.acftotal/1000), 1) .. " hp/ton @ " .. math.Round(data.Power * 1.25) .. " hp"
+	else
+		pwr = pwr .. math.Round(data.Power / (ent.acftotal/1000), 1) .. " hp/ton @ " .. math.Round(data.Power) .. " hp"
+		if data.Fuel == 1 then
+			pwr = pwr .. "\n" .. math.Round(data.Power * 1.25 / (ent.acftotal/1000), 1) .. " hp/ton @ " .. math.Round(data.Power * 1.25) .. " hp with fuel"
+		end
 	end
 	
-	self:GetOwner():ChatPrint( "Total mass is " .. math.Round( total, 2 ) .. "kg" )
+	self:GetOwner():ChatPrint( "Total mass is " .. total .. " kg  ("..phystotal.." kg physical, "..parenttotal.." kg parented, "..physratio.."% physical)"..pwr )
 	
 end
 
@@ -195,20 +203,20 @@ function TOOL:Think()
 	if ACF_Check( ent ) then
 		
 		ply:ConCommand( "acfarmorprop_area " .. ent.ACF.Aera )
-		self.Weapon:SetNetworkedInt( "WeightMass", ent:GetPhysicsObject():GetMass() )
-		self.Weapon:SetNetworkedInt( "HP", ent.ACF.Health )
-		self.Weapon:SetNetworkedInt( "Armour", ent.ACF.Armour )
-		self.Weapon:SetNetworkedInt( "MaxHP", ent.ACF.MaxHealth )
-		self.Weapon:SetNetworkedInt( "MaxArmour", ent.ACF.MaxArmour )
+		self.Weapon:SetNWFloat( "WeightMass", ent:GetPhysicsObject():GetMass() )
+		self.Weapon:SetNWFloat( "HP", ent.ACF.Health )
+		self.Weapon:SetNWFloat( "Armour", ent.ACF.Armour )
+		self.Weapon:SetNWFloat( "MaxHP", ent.ACF.MaxHealth )
+		self.Weapon:SetNWFloat( "MaxArmour", ent.ACF.MaxArmour )
 		
 	else
 	
 		ply:ConCommand( "acfarmorprop_area 0" )
-		self.Weapon:SetNetworkedInt( "WeightMass", 0 )
-		self.Weapon:SetNetworkedInt( "HP", 0 )
-		self.Weapon:SetNetworkedInt( "Armour", 0 )
-		self.Weapon:SetNetworkedInt( "MaxHP", 0 )
-		self.Weapon:SetNetworkedInt( "MaxArmour", 0 )
+		self.Weapon:SetNWFloat( "WeightMass", 0 )
+		self.Weapon:SetNWFloat( "HP", 0 )
+		self.Weapon:SetNWFloat( "Armour", 0 )
+		self.Weapon:SetNWFloat( "MaxHP", 0 )
+		self.Weapon:SetNWFloat( "MaxArmour", 0 )
 		
 	end
 	
@@ -223,9 +231,9 @@ function TOOL:DrawHUD()
 	local ent = self:GetOwner():GetEyeTrace().Entity
 	if not IsValid( ent ) or ent:IsPlayer() then return end
 	
-	local curmass = self.Weapon:GetNetworkedInt( "WeightMass" )
-	local curarmor = self.Weapon:GetNetworkedInt( "MaxArmour" )
-	local curhealth = self.Weapon:GetNetworkedInt( "MaxHP" )
+	local curmass = self.Weapon:GetNWFloat( "WeightMass" )
+	local curarmor = self.Weapon:GetNWFloat( "MaxArmour" )
+	local curhealth = self.Weapon:GetNWFloat( "MaxHP" )
 	
 	local area = GetConVarNumber( "acfarmorprop_area" )
 	local ductility = GetConVarNumber( "acfarmorprop_ductility" )
@@ -250,10 +258,10 @@ function TOOL:DrawToolScreen( w, h )
 	
 	if not CLIENT then return end
 	
-	local Health = math.Round( self.Weapon:GetNetworkedInt( "HP" ) or 0, 2 )
-	local MaxHealth = math.Round( self.Weapon:GetNetworkedInt( "MaxHP" ) or 0, 2 )
-	local Armour = math.Round( self.Weapon:GetNetworkedInt( "Armour" ) or 0, 2 )
-	local MaxArmour = math.Round( self.Weapon:GetNetworkedInt( "MaxArmour" ) or 0, 2 )
+	local Health = math.Round( self.Weapon:GetNWFloat( "HP", 0 ), 2 )
+	local MaxHealth = math.Round( self.Weapon:GetNWFloat( "MaxHP", 0 ), 2 )
+	local Armour = math.Round( self.Weapon:GetNWFloat( "Armour", 0 ), 2 )
+	local MaxArmour = math.Round( self.Weapon:GetNWFloat( "MaxArmour", 0 ), 2 )
 	
 	local HealthTxt = Health .. "/" .. MaxHealth
 	local ArmourTxt = Armour .. "/" .. MaxArmour

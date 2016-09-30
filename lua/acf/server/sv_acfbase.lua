@@ -100,7 +100,7 @@ function ACF_Check ( Entity )
 	
 end
 
-function ACF_Damage ( Entity , Energy , FrAera , Angle , Inflictor , Bone, Gun ) 
+function ACF_Damage ( Entity , Energy , FrAera , Angle , Inflictor , Bone, Gun, Type ) 
 	
 	local Activated = ACF_Check( Entity )
 	local CanDo = hook.Run("ACF_BulletDamage", Activated, Entity, Energy, FrAera, Angle, Inflictor, Bone, Gun )
@@ -109,7 +109,7 @@ function ACF_Damage ( Entity , Energy , FrAera , Angle , Inflictor , Bone, Gun )
 	end
 	
 	if Entity.SpecialDamage then
-		return Entity:ACF_OnDamage( Entity , Energy , FrAera , Angle , Inflictor , Bone )
+		return Entity:ACF_OnDamage( Entity , Energy , FrAera , Angle , Inflictor , Bone, Type )
 	elseif Activated == "Prop" then	
 		
 		return ACF_PropDamage( Entity , Energy , FrAera , Angle , Inflictor , Bone )
@@ -155,7 +155,7 @@ function ACF_CalcDamage( Entity , Energy , FrAera , Angle )
 		end
 	end
 	
-	HitRes.Damage = var * dmul * (Penetration/Armour)^2 * FrAera	-- This is the volume of the hole caused by our projectile 
+	HitRes.Damage = var * dmul * (Penetration/Armour)^2 * FrAera --/math.abs( math.cos(math.rad(Angle/1.25)) )	-- This is the volume of the hole caused by our projectile, with area adjusted by slope
 	HitRes.Overkill = (MaxPenetration - Penetration)
 	HitRes.Loss = Penetration/MaxPenetration
 	
@@ -331,10 +331,10 @@ function ACF_GetAllPhysicalConstraints( ent, ResultTable )
 	for k, con in ipairs( ConTable ) do
 		
 		-- skip shit that is attached by a nocollide
-		if con.Type == "NoCollide" then continue end
-		
-		for EntNum, Ent in pairs( con.Entity ) do
-			ACF_GetAllPhysicalConstraints( Ent.Entity, ResultTable )
+		if not (con.Type == "NoCollide") then
+			for EntNum, Ent in pairs( con.Entity ) do
+				ACF_GetAllPhysicalConstraints( Ent.Entity, ResultTable )
+			end
 		end
 	
 	end

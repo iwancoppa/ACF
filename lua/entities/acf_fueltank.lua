@@ -9,6 +9,24 @@ ENT.WireDebugName = "ACF Fuel Tank"
 --armored tanks
 
 if CLIENT then
+
+	local ACF_FuelInfoWhileSeated = CreateClientConVar("ACF_FuelInfoWhileSeated", 0, true, false)
+	
+	-- copied from base_wire_entity: DoNormalDraw's notip arg isn't accessible from ENT:Draw defined there.
+	function ENT:Draw()
+	
+		local lply = LocalPlayer()
+		local hideBubble = not GetConVar("ACF_FuelInfoWhileSeated"):GetBool() and IsValid(lply) and lply:InVehicle()
+		
+		self.BaseClass.DoNormalDraw(self, false, hideBubble)
+		Wire_Render(self)
+		
+		if self.GetBeamLength and (not self.GetShowBeam or self:GetShowBeam()) then 
+			-- Every SENT that has GetBeamLength should draw a tracer. Some of them have the GetShowBeam boolean
+			Wire_DrawTracerBeam( self, 1, self.GetBeamHighlight and self:GetBeamHighlight() or false ) 
+		end
+		
+	end
 	
 	function ACFFuelTankGUICreate( Table )
 		if not acfmenupanel.CustomDisplay then return end
@@ -182,11 +200,13 @@ function ENT:ACF_Activate( Recalc )
 	
 end
 
-function ENT:ACF_OnDamage( Entity, Energy, FrAera, Angle, Inflictor )	--This function needs to return HitRes
+function ENT:ACF_OnDamage( Entity, Energy, FrAera, Angle, Inflictor, Bone, Type )	--This function needs to return HitRes
 
-	local HitRes = ACF_PropDamage( Entity, Energy, FrAera, Angle, Inflictor )	--Calling the standard damage prop function
+	local Mul = ((Type == "HEAT" and ACF.HEATMulFuel) or 1) --Heat penetrators deal bonus damage to fuel
+	local HitRes = ACF_PropDamage( Entity, Energy, FrAera * Mul, Angle, Inflictor )	--Calling the standard damage prop function
 	
-	if self.Exploding or not self.IsExplosive then return HitRes end
+	local NoExplode = self.FuelType == "Diesel" and not (Type == "HE" or Type == "HEAT")
+	if self.Exploding or NoExplode or not self.IsExplosive then return HitRes end
 	
 	if HitRes.Kill then
 		if hook.Run( "ACF_FuelExplode", self ) == false then return HitRes end
@@ -362,6 +382,9 @@ function ENT:Think()
 	
 	self:NextThink( CurTime() +  1 )
 	
+	--make sure it's not invisible to traces
+	if not self:IsSolid() then self.Fuel = 0 end
+	
 	if self.Leaking > 0 then
 		self:NextThink( CurTime() + 0.25 )
 		self.Fuel = math.max(self.Fuel - self.Leaking,0)
@@ -381,9 +404,9 @@ function ENT:Think()
 						self.Fuel = self.Fuel - exchange
 						Tank.Fuel = Tank.Fuel + exchange
 						if Tank.FuelType == "Electric" then
-							Tank:EmitSound( "ambient/energy/newspark04.wav", 500, 100 )
+							sound.Play("ambient/energy/newspark04.wav",Tank:GetPos(),75,100,0.5)
 						else
-							Tank:EmitSound( "vehicles/jetski/jetski_no_gas_start.wav", 500, 120 )
+							sound.Play("vehicles/jetski/jetski_no_gas_start.wav",Tank:GetPos(),75,120,0.5)
 						end
 					end
 				end

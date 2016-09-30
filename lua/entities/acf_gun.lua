@@ -90,10 +90,15 @@ if CLIENT then
 			acfmenupanel.CData.DisplayModel:SetSize(acfmenupanel:GetWide(),acfmenupanel:GetWide())
 			acfmenupanel.CData.DisplayModel.LayoutEntity = function( panel, entity ) end
 		acfmenupanel.CustomDisplay:AddItem( acfmenupanel.CData.DisplayModel )
-			
-		acfmenupanel:CPanelText("Desc", Table.desc)
+		
+		acfmenupanel:CPanelText("ClassDesc", list.Get("ACFClasses").GunClass[Table.gunclass].desc)	
+		acfmenupanel:CPanelText("GunDesc", Table.desc)
 		acfmenupanel:CPanelText("Caliber", "Caliber : "..(Table.caliber*10).."mm")
 		acfmenupanel:CPanelText("Weight", "Weight : "..Table.weight.."kg")
+		
+		if Table.canparent then
+			acfmenupanel:CPanelText("GunParentable", "\nThis weapon can be parented.")
+		end
 		
 		acfmenupanel.CustomDisplay:PerformLayout()
 		
@@ -109,10 +114,12 @@ function ENT:Initialize()
 	self.Ready = true
 	self.Firing = nil
 	self.Reloading = nil
+	self.CrateBonus = 1
 	self.NextFire = 0
 	self.LastSend = 0
 	self.LastLoadDuration = 0
 	self.Owner = self
+	self.Parentable = false
 	
 	self.IsMaster = true
 	self.AmmoLink = {}
@@ -134,11 +141,19 @@ end
 
 function MakeACF_Gun(Owner, Pos, Angle, Id)
 
-	if not Owner:CheckLimit("_acf_gun") then return false end
+	local EID
+	local List = list.Get("ACFEnts")
+	if List.Guns[Id] then EID = Id else EID = "50mmC" end
+	local Lookup = List.Guns[EID]
+	
+	if Lookup.gunclass == "SL" then
+		if not Owner:CheckLimit("_acf_smokelauncher") then return false end
+	else
+		if not Owner:CheckLimit("_acf_gun") then return false end
+	end
 	
 	local Gun = ents.Create("acf_gun")
-	local List = list.Get("ACFEnts")
-	local Classes = list.Get("ACFClasses")
+	local ClassData = list.Get("ACFClasses").GunClass[Lookup.gunclass]
 	if not Gun:IsValid() then return false end
 	Gun:SetAngles(Angle)
 	Gun:SetPos(Pos)
@@ -147,36 +162,38 @@ function MakeACF_Gun(Owner, Pos, Angle, Id)
 	Gun:SetPlayer(Owner)
 	Gun.Owner = Owner
 	Gun.Id = Id
-	Gun.Caliber	= List.Guns[Id].caliber
-	Gun.Model = List.Guns[Id].model
-	Gun.Mass = List.Guns[Id].weight
-	Gun.Class = List.Guns[Id].gunclass
+	Gun.Caliber	= Lookup.caliber
+	Gun.Model = Lookup.model
+	Gun.Mass = Lookup.weight
+	Gun.Class = Lookup.gunclass
+	Gun.Parentable = Lookup.canparent
 	-- Custom BS for karbine. Per Gun ROF.
 	Gun.PGRoFmod = 1
-	if(List.Guns[Id].rofmod) then
-		Gun.PGRoFmod = math.max(0, List.Guns[Id].rofmod)
+	if(Lookup.rofmod) then
+		Gun.PGRoFmod = math.max(0, Lookup.rofmod)
 	end
 	-- Custom BS for karbine. Magazine Size, Mag reload Time
 	Gun.CurrentShot = 0
 	Gun.MagSize = 1
-	if(List.Guns[Id].magsize) then
-		Gun.MagSize = math.max(Gun.MagSize, List.Guns[Id].magsize)
+	if(Lookup.magsize) then
+		Gun.MagSize = math.max(Gun.MagSize, Lookup.magsize)
 	else
 		Gun.Inputs = Wire_AdjustInputs( Gun, { "Fire", "Unload" } )
 	end
 	Gun.MagReload = 0
-	if(List.Guns[Id].magreload) then
-		Gun.MagReload = math.max(Gun.MagReload, List.Guns[Id].magreload)
+	if(Lookup.magreload) then
+		Gun.MagReload = math.max(Gun.MagReload, Lookup.magreload)
 	end
 	
-	Gun:SetNetworkedString( "WireName", List.Guns[Id].name )
+	Gun:SetNWString( "WireName", Lookup.name )
 	Gun:SetNWString( "Class", Gun.Class )
 	Gun:SetNWString( "ID", Gun.Id )
-	Gun.Muzzleflash = Classes.GunClass[Gun.Class].muzzleflash
-	Gun.RoFmod = Classes.GunClass[Gun.Class].rofmod
-	Gun.Sound = Classes.GunClass[Gun.Class].sound
+	Gun.Muzzleflash = ClassData.muzzleflash
+	Gun.RoFmod = ClassData.rofmod
+	Gun.RateOfFire = 1 --updated when gun is linked to ammo
+	Gun.Sound = ClassData.sound
 	Gun:SetNWString( "Sound", Gun.Sound )
-	Gun.Inaccuracy = Classes.GunClass[Gun.Class].spread
+	Gun.Inaccuracy = ClassData.spread
 	Gun:SetModel( Gun.Model )	
 	
 	Gun:PhysicsInit( SOLID_VPHYSICS )      	
@@ -185,6 +202,16 @@ function MakeACF_Gun(Owner, Pos, Angle, Id)
 	
 	local Muzzle = Gun:GetAttachment( Gun:LookupAttachment( "muzzle" ) )
 	Gun.Muzzle = Gun:WorldToLocal(Muzzle.Pos)
+	
+	local longbarrel = ClassData.longbarrel
+	if longbarrel ~= nil then
+		timer.Simple(0.25, function() --need to wait until after the property is actually set
+			if Gun:GetBodygroup( longbarrel.index ) == longbarrel.submodel then
+				local Muzzle = Gun:GetAttachment( Gun:LookupAttachment( longbarrel.newpos ) )
+				Gun.Muzzle = Gun:WorldToLocal(Muzzle.Pos)
+			end
+		end)
+	end
 	
 	/*local Height = 30		--Damn you Garry
 	local Width = 30
@@ -230,8 +257,13 @@ function MakeACF_Gun(Owner, Pos, Angle, Id)
 	
 	Gun:UpdateOverlayText()
 	
-	Owner:AddCount("_acf_gun", Gun)
 	Owner:AddCleanup( "acfmenu", Gun )
+	
+	if Lookup.gunclass == "SL" then
+		Owner:AddCount("_acf_smokelauncher", Gun)
+	else
+		Owner:AddCount("_acf_gun", Gun)
+	end
 	
 	ACF_Activate(Gun, 0)
 	
@@ -283,7 +315,9 @@ function ENT:Link( Target )
 	
 	-- Don't link if it's not the right ammo type
 	if Target.BulletData.Id ~= self.Id then
-		return false, "Wrong ammo type!"
+		--if not (self.Class == "AL" and string.find(Target.BulletData.Id, "mmC", 1, true)) then --allows AL to load cannon ammo
+			return false, "Wrong ammo type!"
+		--end
 	end
 	
 	-- Don't link if it's a refill crate
@@ -338,6 +372,27 @@ function ENT:Unlink( Target )
 		return false, "That entity is not linked to this gun!"
 	end
 	
+end
+
+function ENT:CanProperty( ply, property )
+
+	if property == "bodygroups" then
+		local longbarrel = list.Get("ACFClasses").GunClass[self.Class].longbarrel
+		if longbarrel ~= nil then
+			timer.Simple(0.25, function() --need to wait until after the property is actually set
+				if self:GetBodygroup( longbarrel.index ) == longbarrel.submodel then
+					local Muzzle = self:GetAttachment( self:LookupAttachment( longbarrel.newpos ) )
+					self.Muzzle = self:WorldToLocal(Muzzle.Pos)
+				else
+					local Muzzle = self:GetAttachment( self:LookupAttachment( "muzzle" ) )
+					self.Muzzle = self:WorldToLocal(Muzzle.Pos)
+				end
+			end)
+		end
+	end 
+	
+	return true
+
 end
 
 local WireTable = { "gmod_wire_adv_pod", "gmod_wire_pod", "gmod_wire_keyboard", "gmod_wire_joystick", "gmod_wire_joystick_multi" }
@@ -414,11 +469,16 @@ function ENT:Think()
 	local Time = CurTime()
 	if self.LastSend+1 <= Time then
 		local Ammo = 0
+		local CrateBonus = {}
+		local rofbonus = 0
+		local totalcap = 0
 		
 		for Key, Crate in pairs(self.AmmoLink) do
 			if IsValid( Crate ) and Crate.Load then
 				if RetDist( self, Crate ) < 512 then
 					Ammo = Ammo + (Crate.Ammo or 0)
+					CrateBonus[Crate.RoFMul] = (CrateBonus[Crate.RoFMul] or 0) + Crate.Capacity
+					totalcap = totalcap + Crate.Capacity
 				else
 					self:Unlink( Crate )
 					soundstr =  "physics/metal/metal_box_impact_bullet" .. tostring(math.random(1, 3)) .. ".wav"
@@ -427,6 +487,11 @@ function ENT:Think()
 			end
 		end
 		
+		for mul, cap in pairs(CrateBonus) do
+			rofbonus = rofbonus + (cap/totalcap)*mul 
+		end
+
+		self.CrateBonus = rofbonus or 1
 		self.Ammo = Ammo
 		self:UpdateOverlayText()
 		
@@ -439,12 +504,12 @@ function ENT:Think()
 			Wire_TriggerOutput(self, "Shots Left", 1)
 		end
 		
-		self:SetNetworkedBeamString("GunType",self.Id)
-		self:SetNetworkedBeamInt("Ammo",Ammo)
-		self:SetNetworkedBeamString("Type",self.BulletData.Type)
-		self:SetNetworkedBeamInt("Mass",self.BulletData.ProjMass*100)
-		self:SetNetworkedBeamInt("Propellant",self.BulletData.PropMass*1000)
-		self:SetNetworkedBeamInt("FireRate",self.RateOfFire)
+		self:SetNWString("GunType",self.Id)
+		self:SetNWInt("Ammo",Ammo)
+		self:SetNWString("Type",self.BulletData.Type)
+		self:SetNWFloat("Mass",self.BulletData.ProjMass*100)
+		self:SetNWFloat("Propellant",self.BulletData.PropMass*1000)
+		self:SetNWFloat("FireRate",self.RateOfFire)
 		
 		self.LastSend = Time
 	
@@ -501,7 +566,7 @@ function ENT:ReloadMag()
 			self.IsUnderWeight = self:CheckWeight()
 		end
 	end
-	if ( (self.CurrentShot > 0) and self.IsUnderWeight and self.Ready and self:GetPhysicsObject():GetMass() >= self.Mass and not self:GetParent():IsValid() ) then
+	if ( (self.CurrentShot > 0) and self.IsUnderWeight and self:IsSolid() and self.Ready and self:GetPhysicsObject():GetMass() >= self.Mass and not (self:GetParent():IsValid() and not self.Parentable) ) then
 		if ( ACF.RoundTypes[self.BulletData.Type] ) then		--Check if the roundtype loaded actually exists
 			self:LoadAmmo(self.MagReload, false)	
 			self:EmitSound("weapons/357/357_reload4.wav",500,100)
@@ -515,8 +580,6 @@ function ENT:ReloadMag()
 		end
 	end
 end
-
-
 
 function ENT:GetInaccuracy()
 	local SpreadScale = ACF.SpreadScale
@@ -553,7 +616,7 @@ function ENT:FireShell()
 			bool = false
 		end
 	end
-	if ( bool and self.IsUnderWeight and self.Ready and self:GetPhysicsObject():GetMass() >= self.Mass and not self:GetParent():IsValid() ) then
+	if ( bool and self.IsUnderWeight and self:IsSolid() and self.Ready and self:GetPhysicsObject():GetMass() >= self.Mass and not (self:GetParent():IsValid() and not self.Parentable) ) then
 		Blacklist = {}
 		if not ACF.AmmoBlacklist[self.BulletData.Type] then
 			Blacklist = {}
@@ -578,19 +641,9 @@ function ENT:FireShell()
 			self.BulletData.Gun = self
 			self.CreateShell = ACF.RoundTypes[self.BulletData.Type].create
 			self:CreateShell( self.BulletData )
-		
-			local Gun = self:GetPhysicsObject()  	
-			if (Gun:IsValid()) then 	
-				if(!self.acflastupdatemass) or (self.acflastupdatemass < (CurTime() + 10)) then
-					ACF_CalcMassRatio( self )
-				end
-				local pushscale = GetConVarNumber("acf_recoilpush") or 1
-				local physratio = 1 * pushscale
-				if(self.acfphystotal) and (self.acftotal) then
-					physratio = self.acfphystotal / self.acftotal
-				end
-				Gun:ApplyForceCenter( self:GetForward() * -(self.BulletData.ProjMass * self.BulletData.MuzzleVel * 39.37 + self.BulletData.PropMass * 3000 * 39.37) * physratio)			
-			end
+			
+			local HasPhys = constraint.FindConstraintEntity(self, "Weld"):IsValid() or not self:GetParent():IsValid()
+			ACF_KEShove(self, HasPhys and util.LocalToWorld(self, self:GetPhysicsObject():GetMassCenter(), 0) or self:GetPos(), -self:GetForward(), (self.BulletData.ProjMass * self.BulletData.MuzzleVel * 39.37 + self.BulletData.PropMass * 3000 * 39.37)*(GetConVarNumber("acf_recoilpush") or 1) )
 			
 			self.Ready = false
 			self.CurrentShot = math.min(self.CurrentShot + 1, self.MagSize)
@@ -649,7 +702,13 @@ function ENT:LoadAmmo( AddTime, Reload )
 		self.BulletData = AmmoEnt.BulletData
 		self.BulletData.Crate = AmmoEnt:EntIndex()
 		
-		self.ReloadTime = ((self.BulletData.RoundVolume/500)^0.60)*self.RoFmod*self.PGRoFmod
+		local cb = 1
+		if(self.CrateBonus and (self.MagReload == 0)) then
+			cb = self.CrateBonus
+			if (cb == 0) then cb = 1 end
+		end
+		
+		self.ReloadTime = ((self.BulletData.RoundVolume/500)^0.60)*self.RoFmod*self.PGRoFmod * cb
 		Wire_TriggerOutput(self, "Loaded", self.BulletData.Type)
 		
 		self.RateOfFire = (60/self.ReloadTime)
@@ -661,7 +720,7 @@ function ENT:LoadAmmo( AddTime, Reload )
 		local reloadTime = self.ReloadTime
 		
 		if AddTime then
-			reloadTime = reloadTime + AddTime
+			reloadTime = reloadTime + AddTime * self.CrateBonus
 		end
 		if Reload then
 			self:ReloadEffect()
@@ -697,7 +756,7 @@ function ENT:UnloadAmmo()
 	
 	self.Ready = false
 	Wire_TriggerOutput(self, "Ready", 0)
-	self:LoadAmmo( math.min(self.ReloadTime,math.max(self.ReloadTime - (self.NextFire - CurTime()),0) )	, true )
+	self:LoadAmmo( math.min(self.ReloadTime/2,math.max(self.ReloadTime - (self.NextFire - CurTime()),0) )	, true )
 	self:EmitSound("weapons/357/357_reload4.wav",500,100)
 
 end

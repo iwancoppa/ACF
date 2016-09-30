@@ -1,30 +1,111 @@
-r458
+r500
 --For an extended version history, please visit the github changelog.  https://github.com/nrlulz/ACF/commits/master
 
-*r459
---Scaled recoil and HE shove based upon the physical mass of the contraption rather than the total mass. Kinetic impacts remain unchanged.
+*r545
+-Fixed 2.4 B4 using wrong size model
+-Slight buff to 2.1L B4, 2.4L B4, 3.6L V6
+-Reduced turbine fuel use ~20%
+-HE damage normalized a bit on large props
+-Added distance feathering to HE damage
+-Overall HE damage reduced
+-Increased HEAT ammo/fuel damage multiplier 20%
 
-*r462
---Fuel tanks can now be persisted.
+*r546
+-Reduced prop health by 33%
+-Reduced HE damage nerf
+-HEAT pen buffed 20%
+-Clamped HEAT penetrator travel distance
+-GL now has 6 round clip with 2.5s reload
+-60mm mortar rate of fire lowered
+-Improved handling of shells re-entering through skybox
+-Separated SL spawn limit from guns (max 10)
+-Applied sitting infobubble hide to ammo/engine/gearbox/fuel
+-Fixed cannon rifling texture and m36 muzzle brake
+-Updated HMG model with 2 new bodies (mg-ff and mg151)
+-Updated SA model (better scale & proportions, side mag bodygroup)
+-Removed some unused models
 
-*r463
---Added clientside function acf_cl_particlemul to reduce particle counts clientside for HE/HEAT explosions.
+*r547
+-Reduced prop health nerf from 33% to 15%
+-Fixed HMG long barrel not firing from correct spot after paste
 
-*r464
---Added Flechette ammo.  See ammo description for more detail.
+*r548
+-ACF rounds now respect visual clips on props
 
-*r465
---HP and SM rounds no longer show blacklisted weapon types in the setup menu.
---Gun reload no longer continually triggers.
---Gun reload input no longer appears for guns without clips.
---[E2]  ENT:acfFire(state) no longer causes errors, but can only attribute kills to gun owner. Use wire inputs on gun to properly attribute kills.
---[E2]  Added ENT:acfCaliber()  which returns the caliber of a weapon or ammo.
---[E2]  ENT:acfReload() optimized, op cost reduced.
+*r552
+-Fixed error with ACF menu tool, courtesy of brandonsturgeon
 
-*r466
---Replaced the old ACF smoke effect with the XCF smoke effect, which is thicker, colorable, and affected by wind.
---Also included the convar acf_smokewind which adjusts how powerful the wind effect is.
+*r553
+-Fix for invalid setpos spam, TY Sestze
 
-*r467
---Fixed guns failing to fire from a chip with unwired inputs
---Fixed bullet impact failing to apply force in some circumstances
+*r555
+-Added ground gas turbines
+-Added automatic transmissions
+-Added 76mm SA
+-Added client convar ACF_MobilityRopeLinks, setting 0 will skip rope creation on your links
+-Added ACF E2/SF/EA2 function "entity:acfHitClip( vector hitpos )"; returns 1 if hitpos is on clipped part of entity
+-Added ACF E2/SF/EA2 function "acfHoldGear" and "acfShiftPointScale" for automatic gearboxes
+-Added a hook for ACF_KEShove
+-Added legality checks for SOLID_NONE on ACF entities
+-Added Sestze's MASK_SHOT passthrough (lets 30mm and under pass through things like chain-link fences)
+-Added power to weight ratio output for armor properties tool reload function
+-Added a few small optimizations and behind the scenes improvements
+-Updated readme with install instructions, and a mention of Knight Icy's weapon sound pack
+-Updated ACF Sound Tool to support a future update to ACF Missiles
+-Updated engine stats for electrics and turbines to show the true powerband
+-Fixed operation order error on visclip passthrough
+-Fixed engines ocassionally refusing to use fuel
+-Fixed lua error when trying to create ammo for nonexistent weapon types
+-Fixed possible lua error on KE shove
+-Reduced volume of ammo refill
+-Reduced FL minimum spread from 1.0 to 0.25
+-Damaged gearboxes lose efficiency
+-More relaxed weldparenting rules on mobility (allows parenting chains, requires weld to last [physical] parent)
+-Allowed diffs, double diffs, transfer cases, and clutches to be parented without welds
+-Buffed smoke radius 25%
+-Buffed smoke filler deploy rate, WP filler lifetime
+-Buffed petrol health
+-Buffed electric health massively
+-Nerfed aero turbine throttle response
+-Nerfed transaxial aero turbines to 80% of inline equivalent
+-Nerfed large aero turbine power 8.5%, weight 10%
+-Buffed small inline aero turbine power 15%
+-Buffed med inline aero turbine power 10%
+-Buffed small and med electric power 20%
+-Buffed large electric power 40%
+-Nerfed 0.9L I2 and 1.0L I4 special weight by 15kg
+-Slight nerf to 5.2L V6
+-Slight buff to 7.8L V8
+
+*r558
+-Updated SF functions to new standard, courtesy of EpicG
+-Fixed armor tool reload not working at all
+-Hopefully fixed armor tool reload sometimes not getting entire contraption
+-Fixed transaxial GG turbines
+-Fixed issues with auto gearbox UI
+-Fixed too many digits on auto gearbox overlay
+-Fixed issue with double shifting on gearup/geardown inputs
+
+*r560
+-github pls
+
+*r561
+-Fixed change in r555 that broke missiles
+
+*r562
+-Fixed change in r555 that broke standalone clutch
+-Clamped added time from round extraction to half of load time, when unloading gun
+
+*r563
+-Made it easier for plugins to modify crate text.
+
+*r564
+-Fixed sound tool shoot effect.
+-Added extension support to sound tool.
+-Added error notifications to sound tool.
+
+*r565
+-Fixed sbox_acf_restrictinfo support with EA2 component.
+
+*r569
+-Make acf_bulleteffect use SetEntity() instead of SetMagnitude()

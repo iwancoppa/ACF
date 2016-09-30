@@ -10,7 +10,7 @@ ACF_DefineEngine( "3.6-V6", {
 	fuel = "Petrol",
 	enginetype = "GenericPetrol",
 	weight = 190,
-	torque = 228,
+	torque = 253,
 	flywheelmass = 0.25,
 	idlerpm = 700,
 	peakminrpm = 2200,
@@ -20,14 +20,14 @@ ACF_DefineEngine( "3.6-V6", {
 
 ACF_DefineEngine( "6.2-V6", {
 	name = "6.2L V6 Petrol",
-	desc = "Heavy duty v6, throatier than an LA whore, but loaded with torque\n\nV6s are more torquey than the Boxer and Inline 6s but suffer in power",
+	desc = "Heavy duty 6V71 v6, throatier than an LA whore, but loaded with torque\n\nV6s are more torquey than the Boxer and Inline 6s but suffer in power",
 	model = "models/engines/v6med.mdl",
 	sound = "acf_engines/v6_petrolmedium.wav",
 	category = "V6",
 	fuel = "Petrol",
 	enginetype = "GenericPetrol",
 	weight = 360,
-	torque = 420,
+	torque = 472,
 	flywheelmass = 0.45,
 	idlerpm = 800,
 	peakminrpm = 2200,
@@ -51,3 +51,21 @@ ACF_DefineEngine( "12.0-V6", {
 	peakmaxrpm = 2950,
 	limitrpm = 3500
 } )
+
+ACF_DefineEngine( "5.2-V6", {
+	name = "5.2L V6 Diesel",
+	desc = "Light AFV-grade two-stroke multifuel, high output but heavy",
+	model = "models/engines/v6med.mdl",
+	sound = "acf_engines/i5_dieselmedium.wav",
+	category = "V6",
+	fuel = "Multifuel",
+	enginetype = "GenericDiesel",
+	weight = 520,
+	torque = 485,
+	flywheelmass = 0.8,
+	idlerpm = 650,
+	peakminrpm = 1800,
+	peakmaxrpm = 4200,
+	limitrpm = 4300
+} )
+

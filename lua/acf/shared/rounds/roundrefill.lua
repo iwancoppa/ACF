@@ -12,8 +12,8 @@ Round.desc = "Ammo Refill"
 function Round.convert( Crate, PlayerData )
 	
 	local BulletData = {}
-		BulletData.Id = PlayerData.Id
-		BulletData.Type = PlayerData.Type
+		BulletData.Id = PlayerData.Id or "12.7mmMG"
+		BulletData.Type = PlayerData.Type or "AP"
 		
 		BulletData.Caliber = ACF.Weapons.Guns[PlayerData.Id].caliber
 		BulletData.ProjMass = 2*7.9/100 --Volume of the projectile as a cylinder * streamline factor (Data5) * density of steel
@@ -36,15 +36,15 @@ end
 
 function Round.network( Crate, BulletData )
 	
-	Crate:SetNetworkedString( "AmmoType", "Refill" )
-	Crate:SetNetworkedString( "AmmoID", BulletData.Id )
-	Crate:SetNetworkedInt( "Caliber", BulletData.Caliber )
-	Crate:SetNetworkedInt( "ProjMass", BulletData.ProjMass )
-	Crate:SetNetworkedInt( "FillerMass", BulletData.FillerMass )
-	Crate:SetNetworkedInt( "PropMass", BulletData.PropMass )
-	Crate:SetNetworkedInt( "DragCoef", BulletData.DragCoef )
-	Crate:SetNetworkedInt( "MuzzleVel", BulletData.MuzzleVel )
-	Crate:SetNetworkedInt( "Tracer", BulletData.Tracer )
+	Crate:SetNWString( "AmmoType", "Refill" )
+	Crate:SetNWString( "AmmoID", BulletData.Id )
+	Crate:SetNWFloat( "Caliber", BulletData.Caliber )
+	Crate:SetNWFloat( "ProjMass", BulletData.ProjMass )
+	Crate:SetNWFloat( "FillerMass", BulletData.FillerMass )
+	Crate:SetNWFloat( "PropMass", BulletData.PropMass )
+	Crate:SetNWFloat( "DragCoef", BulletData.DragCoef )
+	Crate:SetNWFloat( "MuzzleVel", BulletData.MuzzleVel )
+	Crate:SetNWFloat( "Tracer", BulletData.Tracer )
 	
 end
 
