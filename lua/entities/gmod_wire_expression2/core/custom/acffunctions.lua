@@ -26,27 +26,27 @@ CreateConVar("sbox_acf_e2restrictinfo", 1) -- 0=any, 1=owned
 
 local function isEngine(ent)
 	if not validPhysics(ent) then return false end
-	if (ent:GetClass() == "acf_engine") then return true else return false end
+	return (ent:GetClass() == "acf_engine")
 end
 
 local function isGearbox(ent)
 	if not validPhysics(ent) then return false end
-	if (ent:GetClass() == "acf_gearbox") then return true else return false end
+	return (ent:GetClass() == "acf_gearbox")
 end
 
 local function isGun(ent)
 	if not validPhysics(ent) then return false end
-	if (ent:GetClass() == "acf_gun") then return true else return false end
+	return (ent:GetClass() == "acf_gun")
 end
 
 local function isAmmo(ent)
 	if not validPhysics(ent) then return false end
-	if (ent:GetClass() == "acf_ammo") then return true else return false end
+	return (ent:GetClass() == "acf_ammo")
 end
 
 local function isFuel(ent)
 	if not validPhysics(ent) then return false end
-	if (ent:GetClass() == "acf_fueltank") then return true else return false end
+	return (ent:GetClass() == "acf_fueltank")
 end
 
 local function restrictInfo(ply, ent)
